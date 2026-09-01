@@ -12,10 +12,14 @@ Api_collector.py -> Archivo principal del proyecto que contiene las clases y fun
   """Gestiona la lectura del archivo de configuración
 - class ResilientAPIDataCollector:
   """Gestiona las funciones para hacer resiliente el codigo y controlar fallos como:"
+
 Funciones para control de errores
   - Fallas en el consumo de API
   - Fallas en la estructura de los datos
   - Errores de Timeout
+
+Funciones para control de información a procesar
+  - Se agrega una funcionalidad para controlar cantidad de registros a procesar desde una variable parametrizable
 
 Funciones para adecuación de la información
 - Paginanación de la información para mejorar el consumo de la misma

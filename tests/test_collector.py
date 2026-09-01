@@ -11,7 +11,7 @@ class TestResilientAPIDataCollector(unittest.TestCase):
     self.config_mock = MagicMock(spec=ConfigManager)
     self.config_mock.api_url = "https://api.test.com/users"
     self.config_mock.timeout = 5
-    self.config_mock.max_retries = 3
+    self.config_mock.retries = 3
     self.config_mock.backoff_factor = 1
     self.config_mock.output_filename = "test_output.json"
 
@@ -73,12 +73,82 @@ def test_retry_configuration(self, mock_adapter, mock_retry):
     ResilientAPIDataCollector(self.config_mock)
 
     mock_retry.assert_called_with(
-        total=self.config_mock.max_retries,
+        total=self.config_mock.retries,
         backoff_factor=self.config_mock.backoff_factor,
         status_forcelist=[500, 502, 503, 504],
         raise_on_status=False,
     )
+    # Verifica que el adaptador montó la estrategia de reintentos
+    mock_adapter.assert_called_once()
 
+@patch("src.collector.requests.Session")
+def test_max_records_normal_limit(self, mock_session_class):
+    """Tarea 3: Límite normal (ej. 3 registros con páginas de 5)"""
+    self.config_mock.max_records = 3
+    collector = ResilientAPIDataCollector(self.config_mock)
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [
+        {"id": 1, "name": "User 1", "email": "u1@test.com", "company": {"name": "C"}},
+        {"id": 2, "name": "User 2", "email": "u2@test.com", "company": {"name": "C"}},
+        {"id": 3, "name": "User 3", "email": "u3@test.com", "company": {"name": "C"}},
+        {"id": 4, "name": "User 4", "email": "u4@test.com", "company": {"name": "C"}},
+        {"id": 5, "name": "User 5", "email": "u5@test.com", "company": {"name": "C"}},
+    ]
+    mock_session_class.return_value.get.return_value = mock_response
+    collector.session = mock_session_class.return_value
+
+    data = collector.fetch_paginated_data()
+    self.assertEqual(len(data), 3)
+
+@patch("src.collector.requests.Session")
+def test_max_records_unlimited(self, mock_session_class):
+    """Tarea 3: Sin límite (max_records = 0) trae todas las páginas"""
+    self.config_mock.max_records = 0
+    collector = ResilientAPIDataCollector(self.config_mock)
+
+    # Simulamos 2 páginas: la primera con 2 elementos y la segunda vacía para cortar
+    mock_resp_1 = MagicMock()
+    mock_resp_1.status_code = 200
+    mock_resp_1.json.return_value = [
+        {"id": 1, "name": "U1", "email": "u1@test.com", "company": {"name": "C"}},
+        {"id": 2, "name": "U2", "email": "u2@test.com", "company": {"name": "C"}},
+    ]
+
+    mock_resp_2 = MagicMock()
+    mock_resp_2.status_code = 200
+    mock_resp_2.json.return_value = []
+
+    mock_session = mock_session_class.return_value
+    mock_session.get.side_effect = [mock_resp_1, mock_resp_2]
+    collector.session = mock_session
+
+    data = collector.fetch_paginated_data()
+    self.assertEqual(len(data), 2)
+
+@patch("src.collector.requests.Session")
+def test_max_records_mid_page_limit(self, mock_session_class):
+    """Tarea 3: Límite alcanzado en mitad de página (ej. pedir 3 de una página de 5)"""
+    self.config_mock.max_records = 3
+    collector = ResilientAPIDataCollector(self.config_mock)
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [
+        {"id": 1, "name": "User 1", "email": "u1@test.com", "company": {"name": "C"}},
+        {"id": 2, "name": "User 2", "email": "u2@test.com", "company": {"name": "C"}},
+        {"id": 3, "name": "User 3", "email": "u3@test.com", "company": {"name": "C"}},
+        {"id": 4, "name": "User 4", "email": "u4@test.com", "company": {"name": "C"}},
+        {"id": 5, "name": "User 5", "email": "u5@test.com", "company": {"name": "C"}},
+    ]
+    mock_session_class.return_value.get.return_value = mock_response
+    collector.session = mock_session_class.return_value
+
+    data = collector.fetch_paginated_data()
+    self.assertEqual(len(data), 3)
+    self.assertEqual(data[0]["id"], 1)
+    self.assertEqual(data[2]["id"], 3)
 
 if __name__ == "__main__":
   unittest.main()
