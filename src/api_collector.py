@@ -30,12 +30,12 @@ class ConfigManager:
     return self.config.getint("DEFAULT", "timeout")
 
   @property
-  def max_retries(self) -> int:
+  def retries(self) -> int:
     return self.config.getint("DEFAULT", "retries")
 
   @property
-  def retries(self) -> int:
-    return self.config.getint("DEFAULT", "retries")
+  def max_records(self) -> int:
+    return self.config.getint("DEFAULT", "max_records")
 
   @property
   def backoff_factor(self) -> int:
@@ -73,10 +73,12 @@ class ResilientAPIDataCollector:
     return session
 
   def fetch_paginated_data(self) -> List[Dict[str, Any]]:
-    """Consulta la API externa manejando timeouts y errores HTTP (RF-02, RF-03)."""
+    """Consulta la API externa manejando timeouts, cantidad maxima registros y errores HTTP (RF-02, RF-03)."""
     all_data = []
     page = 1
+    records = 0
     limit_per_page = 5
+    max = self.config.max_records
 
     logging.info(f"Inicio del proceso de recolección.")
     logging.info(f"Fuente consultada: {self.config.api_url}")
@@ -93,8 +95,14 @@ class ResilientAPIDataCollector:
         if not data:
           break
 
+        if max > 0 and (len(all_data) + len(data)) >= max:
+          restantes = max - len(all_data)
+          all_data.extend(data[:restantes])
+          break
+
         all_data.extend(data)
         page += 1
+
 
       except requests.exceptions.Timeout:
         logging.error(
@@ -160,6 +168,12 @@ class ResilientAPIDataCollector:
     logging.info(
       f"Cantidad de registros procesados: {self.metrics['processed']}"
     )
+
+    if self.config.max_records == 0:
+      self.metrics["limit"] = 'UNLIMITED'
+    else:
+      self.metrics["limit"] = self.config.max_records
+
     return transformed_records
 
   def save_to_json(self, data: List[Dict[str, Any]]) -> None:
@@ -203,8 +217,9 @@ class ResilientAPIDataCollector:
     print("COLLECTION SUMMARY")
     print("=========================")
     print(f"Records received: {self.metrics['received']}")
-    print(f"Records valid: {self.metrics['valid']}")
     print(f"Records processed: {self.metrics['processed']}")
+    print(f"Limit configured: {self.metrics['limit']}")
+    print(f"Records valid: {self.metrics['valid']}")
     print(f"Records failed: {self.metrics['failed']}")
     print(f"\nExecution time: {execution_time} seconds")
     print(f"\nStatus: {self.metrics['status']}")
