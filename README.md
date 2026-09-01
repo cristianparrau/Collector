@@ -37,7 +37,7 @@ api_collector/
 ├── requirements.txt         # Dependencias del proyecto
 ├── src/
 │   ├── __init__.py
-│   └── collector.py         # Código fuente principal (Lógica y clases)
+│   └── api_collector.py         # Código fuente principal (Lógica y clases)
 └── tests/
     ├── __init__.py
     └── test_collector.py    # Pruebas automatizadas unitarias

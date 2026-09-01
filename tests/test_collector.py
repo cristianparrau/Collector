@@ -66,9 +66,10 @@ class TestResilientAPIDataCollector(unittest.TestCase):
     self.assertEqual(len(data), 0)
     self.assertEqual(self.collector.metrics["status"], "FAILED")
 
-@patch("src.api_collector.Retry")
-@patch("src.api_collector.HTTPAdapter")
-def test_retry_configuration(self, mock_retry, mock_adapter):
+  @patch("src.api_collector.HTTPAdapter")
+  @patch("src.api_collector.Retry")
+
+  def test_retry_configuration(self, mock_retry, mock_adapter):
     # Aseguramos que el mock use el nombre exacto 'retries'
     self.config_mock.retries = 3
 
@@ -86,8 +87,8 @@ def test_retry_configuration(self, mock_retry, mock_adapter):
     # Validamos que el adaptador HTTP reciba la estrategia generada
     mock_adapter.assert_called_once_with(max_retries=mock_retry.return_value)
 
-@patch("src.api_collector.requests.Session")
-def test_max_records_normal_limit(self, mock_session_class):
+  @patch("src.api_collector.requests.Session")
+  def test_max_records_normal_limit(self, mock_session_class):
     """Tarea 3: Límite normal (ej. 3 registros con páginas de 5)"""
     self.config_mock.max_records = 3
     collector = ResilientAPIDataCollector(self.config_mock)
@@ -107,8 +108,8 @@ def test_max_records_normal_limit(self, mock_session_class):
     data = collector.fetch_paginated_data()
     self.assertEqual(len(data), 3)
 
-@patch("src.api_collector.requests.Session")
-def test_max_records_unlimited(self, mock_session_class):
+  @patch("src.api_collector.requests.Session")
+  def test_max_records_unlimited(self, mock_session_class):
     """Tarea 3: Sin límite (max_records = 0) trae todas las páginas"""
     self.config_mock.max_records = 0
     collector = ResilientAPIDataCollector(self.config_mock)
@@ -132,8 +133,8 @@ def test_max_records_unlimited(self, mock_session_class):
     data = collector.fetch_paginated_data()
     self.assertEqual(len(data), 2)
 
-@patch("src.api_collector.requests.Session")
-def test_max_records_mid_page_limit(self, mock_session_class):
+  @patch("src.api_collector.requests.Session")
+  def test_max_records_mid_page_limit(self, mock_session_class):
     """Tarea 3: Límite alcanzado en mitad de página (ej. pedir 3 de una página de 5)"""
     self.config_mock.max_records = 3
     collector = ResilientAPIDataCollector(self.config_mock)
