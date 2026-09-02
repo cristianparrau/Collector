@@ -1,5 +1,6 @@
-from fastapi.testclient import TestClient
 from unittest.mock import patch
+import requests
+from fastapi.testclient import TestClient
 from src.api import app
 
 client = TestClient(app)
@@ -10,6 +11,17 @@ def test_health_check():
   response = client.get("/health")
   assert response.status_code == 200
   assert response.json() == {"status": "healthy"}
+
+@patch("src.api_collector.requests.Session.get")
+def test_collect_source_error(mock_get):
+  """Ejercita el fallo real de la fuente mediante una excepción de red."""
+  mock_get.side_effect = requests.exceptions.ConnectionError(
+      "Connection error"
+  )
+
+  response = client.post("/collect")
+  assert response.status_code == 502
+  assert "falló" in response.json()["detail"]
 
 
 @patch("src.api_collector.ResilientAPIDataCollector.run")

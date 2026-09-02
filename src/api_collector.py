@@ -56,6 +56,7 @@ class ResilientAPIDataCollector:
       "processed":0,
       "failed":0,
       "status":"PENDING",
+      "limit": 0,
     }
 
   def _create_resilient_session(self) -> requests.Session:
@@ -206,7 +207,8 @@ class ResilientAPIDataCollector:
     print("=========================")
     print(f"Records received: {self.metrics['received']}")
     print(f"Records processed: {self.metrics['processed']}")
-    print(f"Limit configured: {self.metrics['limit']}")
+    limit_val = self.metrics.get("limit", "N/A")
+    print(f"Limit configured: {limit_val}")
     print(f"Records valid: {self.metrics['valid']}")
     print(f"Records failed: {self.metrics['failed']}")
     print(f"\nExecution time: {execution_time} seconds")

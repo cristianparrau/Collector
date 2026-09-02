@@ -42,3 +42,18 @@ api_collector/
     ├── __init__.py
     └── test_collector.py    # Pruebas automatizadas unitarias
 
+Servicio HTTP (FastAPI)
+
+Para levantar la API localmente con recarga automática:
+
+PowerShell
+python -m uvicorn src.api:app --reload
+Endpoints Disponibles
+
+GET /health — Healthcheck liveness del servicio.
+
+GET /status — Devuelve las métricas de la última ejecución en formato JSON.
+
+POST /collect — Dispara el pipeline completo. Acepta parámetro opcional ?max_records=N. Retorna 200 OK con métricas o 502 Bad Gateway ante fallos de la fuente.
+
+Documentación interactiva en navegador: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
