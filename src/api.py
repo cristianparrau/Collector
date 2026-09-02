@@ -1,16 +1,13 @@
 from fastapi import FastAPI, HTTPException, Query, Depends
 from sqlalchemy.orm import Session
-from src.collector import ConfigManager, ResilientAPIDataCollector
-from src.database import get_db_engine, RecordModel, ExecutionRunModel
-from sqlalchemy.orm import sessionmaker
+from src.api_collector import ConfigManager, ResilientAPIDataCollector
+from src.database import SessionLocal, RecordModel, ExecutionRunModel
+from src.config import ConfigManager
 
 app = FastAPI(title="Resilient API Data Collector Service", version="1.2")
 
 config = ConfigManager("config.ini")
 collector = ResilientAPIDataCollector(config)
-
-engine = get_db_engine(config)
-SessionLocal = sessionmaker(bind=engine)
 
 
 def get_db():
@@ -66,9 +63,7 @@ def list_records(
     db: Session = Depends(get_db),
 ):
   """Devuelve una lista paginada de registros almacenados en la base de datos."""
-  records = (
-      db.query(RecordModel).offset(offset).limit(limit).all()
-  )
+  records = db.query(RecordModel).offset(offset).limit(limit).all()
   return {
       "limit": limit,
       "offset": offset,

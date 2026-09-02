@@ -1,8 +1,8 @@
 import os
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from datetime import datetime
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, create_engine
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+from src.config import ConfigManager
 
 Base = declarative_base()
 
@@ -36,13 +36,23 @@ class RecordModel(Base):
   execution = relationship("ExecutionRunModel", back_populates="records")
 
 
-def get_db_engine(config_manager):
-  # Prioriza variable de entorno si existe, de lo contrario lee del config.ini
+def get_db_engine(config_manager=None):
+  """Función auxiliar para obtener el motor de base de datos de forma dinámica."""
   db_url = os.getenv("DB_URL")
-  if not db_url:
+  if not db_url and config_manager:
     try:
       db_url = config_manager.config.get("DATABASE", "db_url")
     except Exception:
-      db_url = "postgresql://postgres:postgres@localhost:5432/datacollector_db"
-
+      pass
+  if not db_url:
+    db_url = "postgresql://postgres:postgres@localhost:5432/datacollector_db"
   return create_engine(db_url)
+
+
+# Instancias globales y creación automática de tablas
+config_manager = ConfigManager("config.ini")
+engine = get_db_engine(config_manager)
+
+Base.metadata.create_all(bind=engine)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

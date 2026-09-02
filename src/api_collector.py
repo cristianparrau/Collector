@@ -7,7 +7,7 @@ from unittest.mock import PropertyMock
 from src.database import ExecutionRunModel, RecordModel, Base, get_db_engine
 from sqlalchemy.orm import sessionmaker
 import logging
-
+from src.config import ConfigManager
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
@@ -236,6 +236,7 @@ class ResilientAPIDataCollector:
 
     final_data = self.transform_data(validated_data)
     self.save_to_json(final_data)
+    self.save_to_database(final_data)
 
     if self.metrics["status"] != "FAILED":
       self.metrics["status"] = "SUCCESS"

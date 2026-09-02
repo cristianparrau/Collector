@@ -12,7 +12,7 @@ def test_health_check():
   assert response.json() == {"status": "healthy"}
 
 
-@patch("src.collector.ResilientAPIDataCollector.run")
+@patch("src.api_collector.ResilientAPIDataCollector.run")
 def test_collect_success(mock_run):
   mock_run.return_value = {
       "received": 5,
@@ -26,7 +26,7 @@ def test_collect_success(mock_run):
   assert response.json()["metrics"]["status"] == "SUCCESS"
 
 
-@patch("src.collector.ResilientAPIDataCollector.run")
+@patch("src.api_collector.ResilientAPIDataCollector.run")
 def test_collect_db_or_source_error(mock_run):
   """Valida respuesta 502 cuando el pipeline falla."""
   mock_run.return_value = {
