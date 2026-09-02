@@ -4,6 +4,9 @@ import logging
 import time
 from typing import Any, Dict, List
 from unittest.mock import PropertyMock
+from src.database import ExecutionRunModel, RecordModel, Base, get_db_engine
+from sqlalchemy.orm import sessionmaker
+import logging
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -169,6 +172,48 @@ class ResilientAPIDataCollector:
         f"[Componente: save_to_json] Error al escribir el archivo JSON: {e}"
       )
       self.metrics["status"] = "FAILED"
+
+  def save_to_database(self, final_data: list):
+    engine = get_db_engine(self.config)
+    SessionLocal = sessionmaker(bind=engine)
+    db = SessionLocal()
+    try:
+      # Asegurar que las tablas existan (útil para dev/test rápidos)
+      Base.metadata.create_all(bind=engine)
+
+      # 1. Crear la ejecución en execution_runs
+      run_record = ExecutionRunModel(
+        received=self.metrics.get("received", 0),
+        valid=self.metrics.get("valid", 0),
+        processed=self.metrics.get("processed", 0),
+        failed=self.metrics.get("failed", 0),
+        status=self.metrics.get("status", "SUCCESS"),
+        limit_val=self.metrics.get("limit", 0),
+      )
+      db.add(run_record)
+      db.commit()
+      db.refresh(run_record)
+
+      # 2. Persistir cada registro transformado vinculado a esta ejecución
+      for item in final_data:
+        db_record = RecordModel(
+          execution_id=run_record.id,
+          user_id=item.get("id"),
+          full_name=item.get("name"),
+          email=item.get("email"),
+          company_name=item.get("company", {}).get("name", "N/A"),
+          status="PROCESSED",
+        )
+        db.add(db_record)
+      db.commit()
+      logging.info("Datos persistidos exitosamente en PostgreSQL.")
+    except Exception as e:
+      db.rollback()
+      logging.error(f"Error al persistir en la base de datos: {e}")
+      self.metrics["status"] = "FAILED"
+      raise e
+    finally:
+      db.close()
 
   def run(self, max_records_override: int = None) -> dict:
     """Ejecuta el pipeline completo y devuelve el resumen de métricas."""

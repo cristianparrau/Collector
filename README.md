@@ -57,3 +57,6 @@ GET /status — Devuelve las métricas de la última ejecución en formato JSON.
 POST /collect — Dispara el pipeline completo. Acepta parámetro opcional ?max_records=N. Retorna 200 OK con métricas o 502 Bad Gateway ante fallos de la fuente.
 
 Documentación interactiva en navegador: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+Instalación postgress
+docker run --name postgres_collector -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=datacollector_db -p 5432:5432 -d postgres:latest
