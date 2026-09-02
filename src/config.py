@@ -25,7 +25,6 @@ class ConfigManager:
           "db_url": "postgresql://postgres:postgres@localhost:5432/datacollector_db"
       }
 
-  # Propiedades dinámicas para evitar AttributeError si el código llama directamente a estos atributos
   @property
   def api_url(self):
     return self.config.get(
@@ -49,3 +48,11 @@ class ConfigManager:
   @property
   def max_records(self):
     return self.config.getint("DEFAULT", "max_records", fallback=0)
+
+  @property
+  def output_filename(self):
+    return self.config.get(
+        "DEFAULT",
+        "output_filename",
+        fallback="usuarios_paginados_procesados.json",
+    )

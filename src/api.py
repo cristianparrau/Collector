@@ -1,18 +1,22 @@
 from fastapi import FastAPI, HTTPException, Query, Depends
 from sqlalchemy.orm import Session
-from src.api_collector import ConfigManager, ResilientAPIDataCollector
-from src.database import SessionLocal, RecordModel, ExecutionRunModel
 from src.config import ConfigManager
+from src.api_collector import ResilientAPIDataCollector
+from src.database import init_db, get_session_factory, RecordModel, ExecutionRunModel
 
-app = FastAPI(title="Resilient API Data Collector Service", version="1.2")
+app = FastAPI(title="Resilient API Data Collector Service", version="1.3")
 
 config = ConfigManager("config.ini")
+engine = init_db(config)  # Se inicializa explícitamente aquí, seguro para tests y arranque
+SessionLocal = get_session_factory(engine)
+
 collector = ResilientAPIDataCollector(config)
 
 
 def get_db():
-  db = SessionLocal()
+  """Maneja la sesión atrapando errores de conexión reales dentro del bloque try."""
   try:
+    db = SessionLocal()
     yield db
   except Exception as e:
     raise HTTPException(
@@ -20,7 +24,10 @@ def get_db():
         detail=f"Base de datos no disponible o error de conexión: {e}",
     )
   finally:
-    db.close()
+    try:
+      db.close()
+    except UnboundLocalError:
+      pass
 
 
 @app.get("/health", summary="Healthcheck simple")
@@ -51,18 +58,12 @@ def trigger_collection(
   return {"message": "Proceso ejecutado y persistido con éxito", "metrics": metrics}
 
 
-@app.get("/status", summary="Consulta el estado de la última ejecución")
-def get_status():
-  return collector.metrics
-
-
 @app.get("/records", summary="Lista los registros persistidos con paginación")
 def list_records(
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
-  """Devuelve una lista paginada de registros almacenados en la base de datos."""
   records = db.query(RecordModel).offset(offset).limit(limit).all()
   return {
       "limit": limit,

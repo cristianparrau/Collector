@@ -2,13 +2,13 @@ import json
 import configparser
 import logging
 import time
+import requests
+import logging
 from typing import Any, Dict, List
 from unittest.mock import PropertyMock
 from src.database import ExecutionRunModel, RecordModel, Base, get_db_engine
 from sqlalchemy.orm import sessionmaker
-import logging
 from src.config import ConfigManager
-import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
@@ -198,10 +198,10 @@ class ResilientAPIDataCollector:
       for item in final_data:
         db_record = RecordModel(
           execution_id=run_record.id,
-          user_id=item.get("id"),
-          full_name=item.get("name"),
+          user_id=item.get("user_id"),
+          full_name=item.get("full_name"),
           email=item.get("email"),
-          company_name=item.get("company", {}).get("name", "N/A"),
+          company_name=item.get("company_name"),
           status="PROCESSED",
         )
         db.add(db_record)

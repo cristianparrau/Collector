@@ -16,7 +16,7 @@ class ExecutionRunModel(Base):
   processed = Column(Integer, default=0)
   failed = Column(Integer, default=0)
   status = Column(String(50), default="PENDING")
-  limit_val = Column(Integer, default=0)
+  limit_val = Column(String(50), default="0")
   timestamp = Column(DateTime, default=datetime.utcnow)
 
   records = relationship("RecordModel", back_populates="execution")
@@ -37,7 +37,6 @@ class RecordModel(Base):
 
 
 def get_db_engine(config_manager=None):
-  """Función auxiliar para obtener el motor de base de datos de forma dinámica."""
   db_url = os.getenv("DB_URL")
   if not db_url and config_manager:
     try:
@@ -49,10 +48,14 @@ def get_db_engine(config_manager=None):
   return create_engine(db_url)
 
 
-# Instancias globales y creación automática de tablas
-config_manager = ConfigManager("config.ini")
-engine = get_db_engine(config_manager)
+def init_db(config_manager=None):
+  """Inicializa las tablas explícitamente al arrancar la app, nunca en el import."""
+  if not config_manager:
+    config_manager = ConfigManager("config.ini")
+  engine = get_db_engine(config_manager)
+  Base.metadata.create_all(bind=engine)
+  return engine
 
-Base.metadata.create_all(bind=engine)
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+def get_session_factory(engine):
+  return sessionmaker(autocommit=False, autoflush=False, bind=engine)
