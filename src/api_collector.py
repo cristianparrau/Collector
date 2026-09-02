@@ -72,51 +72,20 @@ class ResilientAPIDataCollector:
     session.mount("http://", adapter)
     return session
 
-  def fetch_paginated_data(self) -> List[Dict[str, Any]]:
-    """Consulta la API externa manejando timeouts, cantidad maxima registros y errores HTTP (RF-02, RF-03)."""
-    all_data = []
+  def fetch_paginated_data(self, max_limit: int = None) -> list:
+    all_records = []
     page = 1
-    records = 0
-    limit_per_page = 5
-    max = self.config.max_records
-
-    logging.info(f"Inicio del proceso de recolección.")
-    logging.info(f"Fuente consultada: {self.config.api_url}")
+    limit = max_limit if max_limit is not None else self.config.max_records
 
     while True:
-      params = {"_page": page, "_limit": limit_per_page}
+      params = {"_page": page, "_limit": 5}
       try:
         response = self.session.get(
           self.config.api_url, params=params, timeout=self.config.timeout
         )
-        response.raise_for_status()
-        data = response.json()
-
-        if not data:
+        if response.status_code != 200:
+          self.metrics["status"] = "FAILED"
           break
-
-        if max > 0 and (len(all_data) + len(data)) >= max:
-          restantes = max - len(all_data)
-          all_data.extend(data[:restantes])
-          break
-
-        all_data.extend(data)
-        page += 1
-
-
-      except requests.exceptions.Timeout:
-        logging.error(
-          f"[Componente: fetch_paginated_data] Error: Timeout al conectar"
-          f" con la API en la página {page}"
-        )
-        self.metrics["status"] = "FAILED"
-        break
-      except requests.exceptions.HTTPError as e:
-        logging.error(
-          f"[Componente: fetch_paginated_data] Error HTTP: {e}"
-        )
-        self.metrics["status"] = "FAILED"
-        break
       except requests.exceptions.RequestException as e:
         logging.error(
           f"[Componente: fetch_paginated_data] API no disponible o error de"
@@ -125,9 +94,21 @@ class ResilientAPIDataCollector:
         self.metrics["status"] = "FAILED"
         break
 
-    self.metrics["received"] = len(all_data)
-    logging.info(f"Cantidad de registros recibidos: {self.metrics['received']}")
-    return all_data
+      page_data = response.json()
+      if not page_data:
+        break
+
+      self.metrics["received"] += len(page_data)
+
+      if limit > 0 and (len(all_records) + len(page_data)) >= limit:
+        remaining_slots = limit - len(all_records)
+        all_records.extend(page_data[:remaining_slots])
+        break
+
+      all_records.extend(page_data)
+      page += 1
+
+    return all_records
 
   def validate_data(self, records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Valida los datos descartando registros incompletos (RF-05)."""
@@ -188,14 +169,20 @@ class ResilientAPIDataCollector:
       )
       self.metrics["status"] = "FAILED"
 
-  def run(self):
-    """Ejecuta el pipeline completo y muestra el resumen (RF-06)."""
+  def run(self, max_records_override: int = None) -> dict:
+    """Ejecuta el pipeline completo y devuelve el resumen de métricas."""
+    limit = (
+      max_records_override
+      if max_records_override is not None
+      else self.config.max_records
+    )
     start_time = time.time()
 
-    raw_data = self.fetch_paginated_data()
+    # Pasamos el límite dinámico al método de extracción
+    raw_data = self.fetch_paginated_data(max_limit=limit)
     if not raw_data and self.metrics["status"] == "FAILED":
       self._print_summary(start_time)
-      return
+      return self.metrics  # <--- CORREGIDO: Retorna el diccionario de métricas
 
     validated_data = self.validate_data(raw_data)
     if not validated_data and self.metrics["received"] > 0:
@@ -209,6 +196,7 @@ class ResilientAPIDataCollector:
 
     logging.info("Finalización del proceso.")
     self._print_summary(start_time)
+    return self.metrics  # <--- CORREGIDO: Retorna el diccionario al finalizar con éxito
 
   def _print_summary(self, start_time: float):
     """Imprime el resumen de ejecución requerido (RF-06)."""
