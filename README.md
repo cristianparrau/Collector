@@ -6,6 +6,12 @@ Proyecto de laboratorio en Python para consumir una API pública de forma resili
 - `src/`: Código fuente principal.
 - `tests/`: Pruebas unitarias.
 
+## Requisitos Previos
+
+Asegúrate de tener instalado en tu sistema operativo:
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (con el motor de WSL 2 activo en Windows).
+- Git (opcional para clonar el repositorio).
+
 ## Explicacion código
 Api_collector.py -> Archivo principal del proyecto que contiene las clases y funciones para la ejecución del objeto del proyecto
 - class ConfigManager:
@@ -31,16 +37,24 @@ Funciones para adecuación de la información
 ## 📁 Estructura del Proyecto
 
 ```text
-api_collector/
+DataCollector/
 │
-├── config.ini               # Archivo de configuración externa
+├── .env                     # Variables de entorno y secretos centralizados
+├── .dockerignore            # Archivos excluidos de la imagen de Docker
+├── Dockerfile               # Instrucciones para empaquetar la API
+├── docker-compose.yml       # Orquestador de contenedores (API + PostgreSQL)
+├── config.ini               # Archivo de configuración externa por defecto
 ├── requirements.txt         # Dependencias del proyecto
+├── README.md                # Documentación y guía de despliegue en un comando
 ├── src/
 │   ├── __init__.py
-│   └── api_collector.py         # Código fuente principal (Lógica y clases)
+│   ├── api.py               # Aplicación FastAPI y endpoints web
+│   ├── api_collector.py     # Lógica principal del colector y transformación
+│   ├── config.py            # Gestor centralizado de configuración
+│   └── database.py          # Modelos SQLAlchemy y conexión a Postgres
 └── tests/
     ├── __init__.py
-    └── test_collector.py    # Pruebas automatizadas unitarias
+    └── test_collector.py    # Pruebas automatizadas unitarias e integración
 
 Servicio HTTP (FastAPI)
 
@@ -60,3 +74,14 @@ Documentación interactiva en navegador: [http://127.0.0.1:8000/docs](http://127
 
 Instalación postgress
 docker run --name postgres_collector -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=datacollector_db -p 5432:5432 -d postgres:latest
+
+
+## Despliegue Rápido (Un Solo Paso)
+
+No necesitas instalar Python ni configurar bases de datos de forma local. Todo el entorno (API + PostgreSQL) se despliega automáticamente mediante Docker Compose.
+
+1. Clona el repositorio o sitúate en la carpeta raíz del proyecto.
+2. Ejecuta el siguiente comando en tu terminal:
+
+   ```bash
+   docker compose up --build
