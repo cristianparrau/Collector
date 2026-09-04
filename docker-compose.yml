@@ -1,7 +1,8 @@
+version: '3.8'
+
 services:
   db:
     image: postgres:15-alpine
-    container_name: postgres_datacollector
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -15,11 +16,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
   api:
     build: .
-    container_name: fastapi_datacollector
-    restart: always
+    command: uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
     ports:
       - "8000:8000"
     environment:
@@ -27,8 +31,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - .:/app
+    networks:
+      - app-network
 
 volumes:
   postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

@@ -13,6 +13,5 @@ __pycache__/
 .vscode/
 
 # Archivos de configuración local y datos generados
-config.ini
 .env
 *.json
