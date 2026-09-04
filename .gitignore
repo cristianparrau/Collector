@@ -12,3 +12,8 @@ __pycache__/
 # Configuración de IDEs
 .idea/
 .vscode/
+
+# Secretos y variables de entorno
+.env
+.env.*
+!.env.example
