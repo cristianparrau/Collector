@@ -8,3 +8,5 @@ httpx
 pytest
 sqlalchemy
 psycopg2-binary
+pydantic
+google-genai>=1.0.0

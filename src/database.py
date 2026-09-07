@@ -4,8 +4,15 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, create_eng
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from src.config import ConfigManager
 
-Base = declarative_base()
+# 1. Obtén la URL de la base de datos dando prioridad a DB_URL (como se define en tu .env)
+DATABASE_URL = os.getenv("DB_URL") or os.getenv("DATABASE_URL") or "postgresql://postgres:postgres@db:5432/datacollector_db"
 
+# 2. DECLARA EL ENGINE PRIMERO
+engine = create_engine(DATABASE_URL)
+
+# 3. LUEGO CREA LA SESIÓN Y LA BASE
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
 class ExecutionRunModel(Base):
   __tablename__ = "execution_runs"
@@ -35,7 +42,6 @@ class RecordModel(Base):
 
   execution = relationship("ExecutionRunModel", back_populates="records")
 
-
 def get_db_engine(config_manager=None):
   db_url = os.getenv("DB_URL")
   if not db_url and config_manager:
@@ -59,3 +65,11 @@ def init_db(config_manager=None):
 
 def get_session_factory(engine):
   return sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_db():
+  """Generador de sesiones para inyección de dependencias en FastAPI."""
+  db = SessionLocal()
+  try:
+    yield db
+  finally:
+    db.close()

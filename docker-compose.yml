@@ -28,6 +28,7 @@ services:
       - "8000:8000"
     environment:
       - DB_URL=${DB_URL}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     depends_on:
       db:
         condition: service_healthy
