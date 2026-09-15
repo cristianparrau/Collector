@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from src.config import ConfigManager
+from fastapi import HTTPException, status
 
 # 1. Obtén la URL de la base de datos dando prioridad a DB_URL (como se define en tu .env)
 DATABASE_URL = os.getenv("DB_URL") or os.getenv("DATABASE_URL") or "postgresql://postgres:postgres@db:5432/datacollector_db"
@@ -67,9 +68,26 @@ def get_session_factory(engine):
   return sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():
-  """Generador de sesiones para inyección de dependencias en FastAPI."""
-  db = SessionLocal()
+  """Generador de sesiones seguro que intercepta la creación y uso de la base de datos."""
+  db = None
   try:
+    db = SessionLocal()
     yield db
+  except HTTPException:
+    raise
+  except Exception as e:
+    if db:
+      try:
+        db.rollback()
+      except Exception:
+        pass
+    raise HTTPException(
+      status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+      detail="Base de datos no disponible o error de conexión."
+    )
   finally:
-    db.close()
+    if db:
+      try:
+        db.close()
+      except Exception:
+        pass

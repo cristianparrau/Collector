@@ -1,5 +1,4 @@
 from unittest.mock import patch, MagicMock
-import requests
 from fastapi.testclient import TestClient
 from src.api import app
 
@@ -40,7 +39,7 @@ def test_collect_db_or_source_error(mock_run):
   assert response.status_code == 502
 
 
-@patch("src.api.SessionLocal")
+@patch("src.database.SessionLocal")
 def test_list_records_success(mock_session_local):
   """Valida el endpoint GET /records mockeando la sesión de base de datos."""
   mock_session = MagicMock()
@@ -64,11 +63,12 @@ def test_list_records_success(mock_session_local):
   assert data["data"][0]["full_name"] == "Jane Doe"
 
 
-@patch("src.api.SessionLocal")
-def test_database_connection_failure(mock_session_local):
-  """Valida el manejo de errores de base de datos (respuesta 503)."""
-  mock_session_local.side_effect = Exception("Connection refused")
+@patch("src.database.SessionLocal")
+def test_database_connection_failure(mock_session):
+    # Forzar el fallo al intentar crear la sesión
+    mock_session.side_effect = Exception("Connection error")
 
-  response = client.get("/records")
-  assert response.status_code == 503
-  assert "Base de datos no disponible" in response.json()["detail"]
+    response = client.get("/records")  # Ajusta la ruta según tu endpoint de listado
+
+    assert response.status_code == 503
+    assert "Base de datos no disponible" in response.json().get("detail", "")

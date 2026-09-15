@@ -11,12 +11,12 @@ def ask_database(db: Session, question: str) -> tuple[str, list[int]]:
     if not question:
         return "Por favor, ingresa una pregunta válida.", []
 
-    # Limpiar la pregunta y extraer la última palabra relevante omitiendo signos de puntuación
+    # Limpiar la pregunta y extraer la última palabra relevante omitiendo puntuación
     clean_question = re.sub(r'[^\w\s]', '', question)
     words = clean_question.split()
     query_keyword = words[-1] if words else ""
 
-    # 1. Recuperación focalizada segura
+    # 1. Recuperación focalizada estricta
     records = []
     if query_keyword:
         records = db.query(Record).filter(
@@ -24,14 +24,11 @@ def ask_database(db: Session, question: str) -> tuple[str, list[int]]:
             (Record.company_name.ilike(f"%{query_keyword}%"))
         ).limit(5).all()
 
-    # 2. Si no hay coincidencias con la última palabra, intentar traer los últimos registros generales como respaldo
-    if not records:
-        records = db.query(Record).order_by(Record.id.desc()).limit(5).all()
-
+    # 2. Control anti-alucinación estricto: Si no hay match exacto, cortar de inmediato sin inventar contexto
     if not records:
         return "No encontré información relevante en los registros para responder a tu pregunta.", []
 
-    # 3. Construir contexto acotado y recolectar IDs
+    # 3. Construir contexto acotado y recolectar IDs reales
     context_chunks = []
     source_ids = []
     for r in records:
@@ -51,7 +48,6 @@ def ask_database(db: Session, question: str) -> tuple[str, list[int]]:
     """
 
     try:
-        # 4. Llamada al LLM con Gemini Flash
         response = client.models.generate_content(
             model="gemini-3.6-flash",
             contents=prompt,
